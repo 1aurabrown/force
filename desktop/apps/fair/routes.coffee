@@ -188,14 +188,27 @@ InfoMenu = require '../../components/info_menu/index.coffee'
   fairOrg = profile.related().owner
 
   # Get all fairs for the requested fair organizer
-  pastFairs = new Fairs
-  pastFairs.fetch
+
+
+  fairs = new Fairs
+
+  # This grabs all the past fairs by passing fair_organizer_id
+  # to the /fairs endpoint
+  fairs.fetch
     cache: true
     data:
       fair_organizer_id: fairOrg.id
-    success: ->
+      sort: "-start_at"
+    success: (models, response, options)->
+      # find if we have a current fair
+      current = fairs.find (fair)->
+        moment().utc().isBetween fair.get('autopublish_artworks_at'), fair.get('end_at')
+
+      # redirect to fair if there is a fair currently running.
+      return res.redirect(current.href()) if current
+
       # find the fair whose year matches the requested year
-      fair = pastFairs.find (fair) ->
+      fair = fairs.find (fair) ->
         fair.formatYear() is parseInt req.params.year
 
       return next() unless fair
